@@ -6,6 +6,8 @@ from .problem import Problem
 
 class ProblemSet():
 
+    TAG_MODES = set(['all', 'any'])
+
     # Overrides
 
     def __init__(self, path: Optional[str] = None):
@@ -19,7 +21,7 @@ class ProblemSet():
             Each object in the JSON file must contain keys for each parameter in the 'Problem' object constructor
         """
         self.problems = {}
-        self.categories = {}
+        self.tags = {}
         if path:
             self.loadJson(path)
 
@@ -75,8 +77,8 @@ class ProblemSet():
         if problem.num in self.problems:
             raise ValueError(f'Problem {problem.num} already exists')
         self.problems[problem.num] = problem
-        for category in problem.categories:
-            self.categories[category] = self.categories.get(category, 0) + 1
+        for tag in problem.tags:
+            self.tags[tag] = self.tags.get(tag, 0) + 1
         return problem
 
     def loadJson(self, path: str) -> None:
@@ -91,8 +93,7 @@ class ProblemSet():
         with open(path, 'r') as file:
             data = json.load(file)
             for d in data:
-                if d['num'] not in self.problems:
-                    self.add(Problem(**d))
+                self.add(Problem(**d))
 
     def remove(self, num: int) -> Problem:
         """
@@ -119,14 +120,14 @@ class ProblemSet():
             return
         problem = self.problems[num]
         del self.problems[num]
-        for category in problem.categories:
-            if self.categories[category] == 1:
-                del self.categories[category]
+        for tag in problem.tags:
+            if self.tags[tag] == 1:
+                del self.tags[tag]
             else:
-                self.categories[category] -= 1
+                self.tags[tag] -= 1
         return problem
 
-    def selectRandom(self, count: int = 1, difficulty: Optional[str] = None, premium: Optional[bool] = None, categories: Optional[List[str]] = None) -> List[Problem]:
+    def selectRandom(self, count: int = 1, difficulty: Optional[str] = None, premium: Optional[bool] = None, tags: Optional[List[str]] = None, tag_mode: str = 'any') -> List[Problem]:
         """
         Select a random number of problems from the set, with specific filters
 
@@ -135,14 +136,18 @@ class ProblemSet():
         count : int, optional
             Number of problems to select, by default 1
         difficulty : str, optional
-            Difficulty of problems to select, by default None
+            Difficulty of problems to select ('easy', 'medium' or 'hard'), by default None
             If None, any difficulty can be selected
         premium : bool, optional
             Whether to select premium or non-premium problems, by default None
             If None, both premium and non-premium problems cans be selected
-        categories : List[str], optional
-            Categories of problems to select, by default None
-            If None, any category can be selected
+        tags : List[str], optional
+            Tags used to select problems, by default None
+            If None, any tag can be selected
+        tag_mode : str, optional
+            How tags are used to select problems, by default 'any'
+            'all' : Selected problems must have all tags
+            'any' : Selected problems must have at least one tag
 
         Returns
         -------
@@ -152,11 +157,11 @@ class ProblemSet():
         Raises
         ------
         ValueError
-            If an invalid difficulty or category is requested
+            If an invalid difficulty or tag is requested
         """
         nums = set(self.problems.keys())
 
-        if difficulty:
+        if difficulty is not None:
             if difficulty not in Problem.DIFFICULTIES:
                 raise ValueError('Difficulty must be in:', ', '.join(Problem.DIFFICULTIES))
             remove = set()
@@ -165,18 +170,18 @@ class ProblemSet():
                     remove.add(num)
             nums = nums.difference(remove)
 
-        if categories:
-            if type(categories) == str:
-                categories = [categories]
-            for category in categories:
-                if category not in self.categories:
-                    raise ValueError('Categories must be in: ' + ', '.join(self.categories))
+        if tags is not None:
+            for tag in tags:
+                if tag not in self.tags:
+                    raise ValueError('Tags must be in: ' + ', '.join(self.tags))
+            if tag_mode not in ProblemSet.TAG_MODES:
+                raise ValueError('Tag mode must be in: ' + ', '.join(ProblemSet.TAG_MODES))
+            tags = set([tags]) if type(tags) == str else set(tags)
             remove = set()
+            test = (lambda num: tags.intersection(self[num].tags)) if tag_mode == 'any' else (lambda num: self[num].tags.issuperset(tags))
             for num in nums:
-                for category in self[num].categories:
-                    if category not in categories:
-                        remove.add(num)
-                        break
+                if not test(num):
+                    remove.add(num)
             nums = nums.difference(remove)
 
         if premium is not None:

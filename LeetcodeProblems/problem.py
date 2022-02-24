@@ -4,12 +4,12 @@ class Problem():
 
     # Static variables
 
-    DIFFICULTIES = set(['EASY', 'MEDIUM', 'HARD'])
+    DIFFICULTIES = set(['easy', 'medium', 'hard'])
 
 
     # Overrides
 
-    def __init__(self, num: int, name: str, url: str, difficulty: str, premium: bool, categories: Optional[List[str]] = None):
+    def __init__(self, num: int, name: str, url: str, difficulty: str, premium: bool, tags: Optional[List[str]] = None):
         """
         Creates a new problem object
 
@@ -22,12 +22,12 @@ class Problem():
         url : str
             URL to find problem
         difficulty : str
-            Difficulty of problem
+            Difficulty of problem ('easy', 'medium' or 'hard')
         premium : bool
             Whether or not the problem is a premium question or not
-        categories : List[str], optional
-            Category to identify the problem, by default None
-            If None, categories will be set to ['UNKNOWN']
+        tags : List[str], optional
+            Tags that identify the problem, by default None
+            If None, tags will be set to []
 
         Raises
         ------
@@ -42,21 +42,21 @@ class Problem():
             raise ValueError('Name must be a non-empty string')
         if not url:
             raise ValueError('URL must be a non-empty string')
-        difficulty = difficulty.upper()
+        difficulty = difficulty.lower()
         if difficulty not in Problem.DIFFICULTIES:
             raise ValueError('Difficulty must be in:', ', '.join(Problem.DIFFICULTIES))
-        if categories is None:
-            categories = ['UNKNOWN']
-        elif type(categories) is str:
-            categories = [categories.upper()]
+        if tags is None:
+            tags = []
+        elif type(tags) is str:
+            tags = [tags.lower()]
         else:
-            categories = [category.upper() for category in categories]
+            tags = [tag.lower() for tag in tags]
         self.num = num
         self.name = name
         self.url = url
         self.difficulty = difficulty
         self.premium = premium
-        self.categories = set(categories)
+        self.tags = set(tags)
 
     def __repr__(self) -> str:
         """
